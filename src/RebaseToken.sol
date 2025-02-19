@@ -55,9 +55,13 @@ contract RebaseToken is ERC20 {
     constructor() ERC20("Rebase Token", "RBT") {
         // do something
     }
+
+
     // # ------------------------------------------------------------------
     // #                        EXTERNAL FUNCTIONS
     // # ------------------------------------------------------------------
+
+
     /*
      *@notice This function will set the interest rate
      *@param _interestRate The new interest rate
@@ -83,10 +87,24 @@ contract RebaseToken is ERC20 {
      *@dev This function will set the user interest rate to the global interest rate
      */
     function mint(address _to, uint256 _amount) external {
-        _mintAccruredInterest(_to);
+        _mintAccruedInterest(_to);
         s_userInterestRate[_to] = s_interestRate;
         _mint(_to, _amount);
     }
+    /*
+        *@notice This function will burn the token from the user when they withdraw from the vault
+        *@param _from The user address
+        *@param _amount The amount to burn
+        *@dev This function will mint the accrued interest to the user
+    */
+    function burn(address _from, uint256 _amount) external {
+        if(_amount==type(uint256).max){
+            _amount = balanceOf(_from);
+        }
+        _mintAccruedInterest(_from);
+        _burn(_from, _amount);
+    }
+
     /*
      *@notice This function will get the interest rate
      *@param _user The user address
@@ -97,6 +115,8 @@ contract RebaseToken is ERC20 {
     ) external view returns (uint256) {
         return s_userInterestRate[_user];
     }
+
+
     function balanceOf(address account) public view override returns (uint256) {
         return
             super.balanceOf(account) *
@@ -118,12 +138,23 @@ contract RebaseToken is ERC20 {
             s_userLastUpdatedTimestamp[_user];
         linearInterest = (PRECISION_FACTOR + (s_userInterestRate[_user] * timeElapsed));
     }
-
-    function _mintAccruredInterest(address _user) internal {
+    /*
+        *@notice This function will mint the accrued interest to the user since the last time they interacted with the protocol
+        *@param _user The user address
+        *@dev This function will calculate the user's current balance + interest
+        *@dev This function will calculate the number of tokens that need to be minted to the user
+        *@dev This function will set the user's last updated timestamp to the current block timestamp
+    */
+    function _mintAccruedInterest(address _user) internal {
+        // (1) find the current balance of rebase tokens that have been minted to the user
+        uint256 previousPrincipleBalance= super.balanceOf(_user);
+        // (2) calculate their current balance + interest
+        uint256 currentBalance = balanceOf(_user);
+        // (3) calculate the number of tokens that need to be minted to the user
+        uint256 balanceIncrease = currentBalance - previousPrincipleBalance;
+        // set the user's last updated timestamp to the current block timestamp
         s_userLastUpdatedTimestamp[_user] = block.timestamp;
-        uint256 interestRate = s_userInterestRate[_user];
-        uint256 balance = balanceOf(_user);
-        uint256 interest = (balance * interestRate) / 1e18;
-        _mint(_user, interest);
+        _mint(_user, balanceIncrease);
+        
     }
 }
