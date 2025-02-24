@@ -21,8 +21,10 @@
 // external & public view & pure functions
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.19;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 /**
  *@title RebaseToken
  *@author Cosmin Marian
@@ -30,7 +32,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  *@notice This interest rate can only be decreased
  *@notice Each user will have their own interest rate that is the global interest rate at the deposit time
  */
-contract RebaseToken is ERC20 {
+contract RebaseToken is ERC20, Ownable, AccessControl {
     // # ------------------------------------------------------------------
     // #                              ERRORS
     // # ------------------------------------------------------------------
@@ -43,6 +45,7 @@ contract RebaseToken is ERC20 {
     // # ------------------------------------------------------------------
     uint256 private s_interestRate = 5e10;
     uint256 private constant PRECISION_FACTOR = 1e18;
+    bytes32 private constant MINT_AND_BURN_ROLE = keccak256("MINT_AND_BURN_ROLE");
     mapping(address => uint256) private s_userInterestRate;
     mapping(address => uint256) private s_userLastUpdatedTimestamp;
     // # ------------------------------------------------------------------
@@ -52,14 +55,16 @@ contract RebaseToken is ERC20 {
     // # ------------------------------------------------------------------
     // #                           CONSTRUCTOR
     // # ------------------------------------------------------------------
-    constructor() ERC20("Rebase Token", "RBT") {
+    constructor() ERC20("Rebase Token", "RBT") Ownable(msg.sender) {
         // do something
     }
 
     // # ------------------------------------------------------------------
     // #                        EXTERNAL FUNCTIONS
     // # ------------------------------------------------------------------
-
+    function grantMintAndBurnRole(address _account) external onlyOwner {
+        _grantRole(MINT_AND_BURN_ROLE, _account);
+    }
     /**
      *@notice This function will set the interest rate
      *@param _interestRate The new interest rate
@@ -67,7 +72,7 @@ contract RebaseToken is ERC20 {
      *@notice This function will emit an event with the new interest rate
      *@notice The interest rate can only be decreased
      */
-    function setInterestRate(uint256 _interestRate) public {
+    function setInterestRate(uint256 _interestRate) external onlyOwner {
         if (_interestRate < s_interestRate) {
             revert RebaseToken__InterestRateCanOnlyDecrease(
                 _interestRate,
@@ -84,7 +89,7 @@ contract RebaseToken is ERC20 {
      *@dev This function will mint the accrued interest to the user
      *@dev This function will set the user interest rate to the global interest rate
      */
-    function mint(address _to, uint256 _amount) external {
+    function mint(address _to, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
         _mintAccruedInterest(_to);
         s_userInterestRate[_to] = s_interestRate;
         _mint(_to, _amount);
@@ -95,7 +100,7 @@ contract RebaseToken is ERC20 {
      *@param _amount The amount to burn
      *@dev This function will mint the accrued interest to the user
      */
-    function burn(address _from, uint256 _amount) external {
+    function burn(address _from, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
         if (_amount == type(uint256).max) {
             _amount = balanceOf(_from);
         }
