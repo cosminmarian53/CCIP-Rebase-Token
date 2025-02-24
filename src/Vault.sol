@@ -44,7 +44,7 @@ contract Vault {
     // # ------------------------------------------------------------------
     // #                           CONSTRUCTOR
     // # ------------------------------------------------------------------
-    constructor(address _rebaseToken) {
+    constructor(IRebaseToken _rebaseToken) {
         i_rebaseToken = _rebaseToken;
     }
     // # ------------------------------------------------------------------
