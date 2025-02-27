@@ -22,11 +22,14 @@
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
+
 import {IRebaseToken} from "./interfaces/IRebaseToken.sol";
 // # ------------------------------------------------------------------
 // #                              ERRORS
 // # ------------------------------------------------------------------
+
 error Vault__RedeemFailed();
+
 contract Vault {
     // we need to pass the token address to the constructor
     // create a deposit function that mints tokens to the user equal to the amount of ETH the user has sent
@@ -44,19 +47,22 @@ contract Vault {
     // # ------------------------------------------------------------------
     // #                           CONSTRUCTOR
     // # ------------------------------------------------------------------
+
     constructor(IRebaseToken _rebaseToken) {
         i_rebaseToken = _rebaseToken;
     }
     // # ------------------------------------------------------------------
     // #                        EXTERNAL FUNCTIONS
     // # ------------------------------------------------------------------
+
     function getRebaseTokenAddress() external view returns (address) {
         return address(i_rebaseToken);
     }
     /**
      * @notice Deposit ETH into the vault to receive tokens
      * @dev The amount of tokens minted to the user is equal to the amount of ETH sent
-    */
+     */
+
     function deposit() external payable {
         // 1. Use the amount of ETH sent to calculate the amount of tokens to
         // mint to the user
@@ -66,10 +72,14 @@ contract Vault {
     /**
      * @notice Redeem tokens for ETH
      * @param _amount The amount of tokens to redeem
-    */
+     */
+
     function redeem(uint256 _amount) external {
         // 1. Burn the amount of tokens from the user
         // 2. Send the user the amount of ETH equal to the amount of tokens burned
+        if (_amount == type(uint256).max) {
+            _amount = i_rebaseToken.balanceOf(msg.sender);
+        }
         i_rebaseToken.burn(msg.sender, _amount);
         (bool success, ) = payable(msg.sender).call{value: _amount}("");
         if (!success) {
