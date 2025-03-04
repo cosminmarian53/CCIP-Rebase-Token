@@ -180,6 +180,11 @@ contract RebaseTokenTest is Test {
     }
 
     function testInterestRateCanOnlyDecrease(uint256 newInterestRate) public {
-        newInterestRate = bound(newInterestRate, rebaseToken.getInterestRate() + 1, 5e10);
+        uint256 initialInterestRate = rebaseToken.getInterestRate();
+        newInterestRate = bound(newInterestRate, rebaseToken.getInterestRate() + 1, type(uint96).max);
+        vm.prank(owner);
+        vm.expectPartialRevert(RebaseToken.RebaseToken__InterestRateCanOnlyDecrease.selector);
+        rebaseToken.setInterestRate(newInterestRate);
+        assertEq(rebaseToken.getInterestRate(), initialInterestRate);
     }
 }
