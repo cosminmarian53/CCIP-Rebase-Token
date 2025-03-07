@@ -28,7 +28,7 @@ contract CrossChainTest is Test {
         vm.startPrank(owner);
         sepoliaToken = new RebaseToken();
         // we want users to only deposit and redeem on the source chain
-        vault = new Vault(IRebaseToken(sepoliaToken));
+        vault = new Vault(IRebaseToken(address(sepoliaToken)));
         vm.stopPrank();
         // Deploy the RebaseToken contract on the arbitrum-sepolia fork.
         vm.selectFork(arbSepoliaFork);
