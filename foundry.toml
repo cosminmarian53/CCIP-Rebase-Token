@@ -2,7 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-rpc_endpoints = { sepolia = "https://sepolia.infura.io/v3/6766b1e75f984f5d8ae70814899ba348", arb-sepolia = "https://arbitrum-sepolia.infura.io/v3/6766b1e75f984f5d8ae70814899ba348" }
+rpc_endpoints = { eth = "https://eth-sepolia.g.alchemy.com/v2/Hl2E0jd4Ij8DJdnpDIt_s3MjBohJZ7iU", arb = "https://arb-sepolia.g.alchemy.com/v2/Hl2E0jd4Ij8DJdnpDIt_s3MjBohJZ7iU", zksync = "https://sepolia.era.zksync.dev" }
 remappings = [
     "@openzeppelin/=lib/openzeppelin-contracts/",
     "@ccip/=lib/ccip/",

@@ -17,6 +17,7 @@ import {Client} from "@ccip/contracts/src/v0.8/ccip/libraries/Client.sol";
 contract CrossChainTest is Test {
     address owner = makeAddr("owner");
     address user = makeAddr("user");
+    uint256 SEND_VALUE = 1e5;
     uint256 sepoliaFork;
     uint256 arbSepoliaFork;
 
@@ -34,8 +35,8 @@ contract CrossChainTest is Test {
     Register.NetworkDetails arbSepoliaNetworkDetails;
 
     function setUp() public {
-        sepoliaFork = vm.createSelectFork("sepolia");
-        arbSepoliaFork = vm.createFork("arb-sepolia");
+        sepoliaFork = vm.createSelectFork("eth");
+        arbSepoliaFork = vm.createFork("arb");
         ccipLocalSimulatorFork = new CCIPLocalSimulatorFork();
 
         // # ------------------------------------------------------------------
@@ -50,6 +51,8 @@ contract CrossChainTest is Test {
         sepoliaToken = new RebaseToken();
         // we want users to only deposit and redeem on the source chain
         vault = new Vault(IRebaseToken(address(sepoliaToken)));
+        vm.deal(address(vault), 1e18);
+
         sepoliaPool = new RebaseTokenPool(
             IERC20(address(sepoliaToken)),
             new address[](0),
@@ -67,20 +70,6 @@ contract CrossChainTest is Test {
             .acceptAdminRole(address(sepoliaToken));
         TokenAdminRegistry(sepoliaNetworkDetails.tokenAdminRegistryAddress)
             .setPool(address(sepoliaToken), address(sepoliaPool));
-        configureTokenPool(
-            sepoliaFork,
-            address(sepoliaPool),
-            arbSepoliaNetworkDetails.chainSelector,
-            address(arbSepoliaPool),
-            address(arbSepoliaToken)
-        );
-        configureTokenPool(
-            arbSepoliaFork,
-            address(arbSepoliaPool),
-            sepoliaNetworkDetails.chainSelector,
-            address(sepoliaPool),
-            address(sepoliaToken)
-        );
         vm.stopPrank();
 
         // # ------------------------------------------------------------------
@@ -127,7 +116,7 @@ contract CrossChainTest is Test {
             memory chainsToAdd = new TokenPool.ChainUpdate[](1);
         chainsToAdd[0] = TokenPool.ChainUpdate({
             remoteChainSelector: remoteChainSelector,
-            allowed: false,
+            allowed: true,
             remotePoolAddress: remotePoolAddresses,
             remoteTokenAddress: abi.encode(remoteTokenAddress),
             outboundRateLimiterConfig: RateLimiter.Config({
@@ -230,5 +219,36 @@ contract CrossChainTest is Test {
         uint256 destBalance = IERC20(address(remoteToken)).balanceOf(user);
         console.log("Remote balance after bridge: %d", destBalance);
         assertEq(destBalance, initialArbBalance + amountToBridge);
+    }
+
+    function testBridgeAllTokens() public {
+        // configureTokenPool(
+        //     sepoliaFork,
+        //     sepoliaPool,
+        //     arbSepoliaPool,
+        //     IRebaseToken(address(arbSepoliaToken)),
+        //     arbSepoliaNetworkDetails
+        // );
+        // configureTokenPool(
+        //     arbSepoliaFork,
+        //     arbSepoliaPool,
+        //     sepoliaPool,
+        //     IRebaseToken(address(sepoliaToken)),
+        //     sepoliaNetworkDetails
+        // );
+        vm.selectFork(sepoliaFork);
+        vm.deal(user, SEND_VALUE);
+        vm.prank(user);
+        Vault(payable(address(vault))).deposit{value: SEND_VALUE}();
+        assertEq(sepoliaToken.balanceOf(user), SEND_VALUE);
+        bridgeTokens(
+            SEND_VALUE,
+            sepoliaFork,
+            arbSepoliaFork,
+            sepoliaNetworkDetails,
+            arbSepoliaNetworkDetails,
+            sepoliaToken,
+            arbSepoliaToken
+        );
     }
 }
